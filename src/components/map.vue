@@ -1,5 +1,6 @@
 <template>
   <div class="coords">
+    <button @click="removeCircle()">remove</button>
     <button @click="getLocation()">Get Location</button>
     {{ lat }}, {{ lng }}
   </div>
@@ -15,32 +16,49 @@ const lat = ref(0);
 const lng = ref(0);
 const map = ref();
 const mapContainer = ref();
- 
+let marker = ref(null);
+let circle = ref(null);
+
 function getLocation() {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition((position) => {
-      lat.value = position.coords.latitude;
-      lng.value = position.coords.longitude;
-      const accuracy = position.coords.accuracy;
-      map.value.setView([ lat.value , lng.value ], 13);
-      L.marker([lat.value, lng.value], {draggable: true}).addTo(map.value).on("dragend", (event) => {
-        console.log(event);
-        const newLatLng = event.target.getLatLng();
-          lat.value = newLatLng.lat;
-          lng.value = newLatLng.lng;
-          L.circle([lat.value, lng.value], {radius: accuracy}).addTo(map.value)          
-      });
-      L.circle([lat.value, lng.value], {radius: accuracy}).addTo(map.value)
+  navigator.geolocation.getCurrentPosition(success, error);
+  function success(position) {
+    lat.value = position.coords.latitude;
+    lng.value = position.coords.longitude;
+    const accuracy = position.coords.accuracy;
+    map.value.setView([lat.value, lng.value], 13);
+    if (marker) {
+      map.value.removeLayer(marker);
+      map.value.removeLayer(circle);
+    }
+    marker = L.marker([lat.value, lng.value], { draggable: true });
+    marker.addTo(map.value);
+    circle = L.circle([lat.value, lng.value], { radius: accuracy });
+    circle.addTo(map.value);
+
+    marker.on("dragend", (event) => {
+      const newLatLng = event.target.getLatLng();
+      lat.value = newLatLng.lat;
+      lng.value = newLatLng.lng;
+      if (circle) {
+        map.value.removeLayer(circle);
+      }
+      circle = L.circle([lat.value, lng.value], { radius: accuracy })
+      circle.addTo(map.value);
     });
+  }
+  function error(err) {
+    if (err.code === 1) {
+      alert("Please allow location access");
+    } else {
+      alert("cannot get current location");
+    }
   }
 }
 
-function error(err){
-    if (err.code === 1){
-        alert("Please allow location access")
-    } else{
-        alert("cannot get current location")
-    }
+function removeCircle() {
+  map.value.removeLayer(marker);
+  map.value.removeLayer(circle);
+  circle.value = null
 }
 
 onMounted(() => {
